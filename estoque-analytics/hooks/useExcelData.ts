@@ -2,7 +2,17 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import * as XLSX from 'xlsx';
-import { Product, DashboardMetrics, FilterOptions } from '@/types/product';
+import { 
+  Product, 
+  ExtendedProduct,
+  DashboardMetrics, 
+  FilterOptions, 
+  AdvancedAnalytics,
+  StockAlert,
+  KPITarget,
+  PerformanceMetrics
+} from '@/types/product';
+import { AdvancedAnalyticsService } from '@/services/AdvancedAnalyticsService';
 
 export const useExcelData = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -82,7 +92,17 @@ export const useExcelData = () => {
     }
   }, []);
 
-  // Métricas do dashboard
+  // Serviço de análise avançada
+  const analyticsService = useMemo(() => {
+    return products.length > 0 ? new AdvancedAnalyticsService(products) : null;
+  }, [products]);
+
+  // Produtos enriquecidos com métricas avançadas
+  const extendedProducts = useMemo((): ExtendedProduct[] => {
+    return analyticsService ? analyticsService['extendedProducts'] : [];
+  }, [analyticsService]);
+
+  // Métricas do dashboard expandidas
   const dashboardMetrics = useMemo((): DashboardMetrics => {
     if (products.length === 0) {
       return {
@@ -90,27 +110,66 @@ export const useExcelData = () => {
         itemsWithZeroStock: 0,
         totalOpenOrders: 0,
         totalStockUnits: 0,
-        totalSales30d: 0
+        totalSales30d: 0,
+        averageStockDays: 0,
+        stockTurnover: 0,
+        serviceLevel: 0,
+        totalStockValue: 0,
+        criticalItems: 0,
+        seasonalItems: 0,
+        profitMargin: 0,
+        stockEfficiency: 0,
+        demandVariability: 0,
+        forecastAccuracy: 0
       };
     }
+
+    const totalStockValue = products.reduce((sum, p) => sum + (p.Estoque * p.Preço), 0);
+    const criticalItems = extendedProducts.filter(p => p.risco === 'CRÍTICO').length;
+    const seasonalItems = extendedProducts.filter(p => p.statusOperacional === 'SAZONAL').length;
+    const avgStockDays = extendedProducts.length > 0 
+      ? extendedProducts.reduce((sum, p) => sum + p.diasCobertura, 0) / extendedProducts.length 
+      : 0;
+    const avgStockTurnover = extendedProducts.length > 0 
+      ? extendedProducts.reduce((sum, p) => sum + p.giroEstoque, 0) / extendedProducts.length 
+      : 0;
+    const avgProfitMargin = extendedProducts.length > 0 
+      ? extendedProducts.reduce((sum, p) => sum + p.margemLucro, 0) / extendedProducts.length 
+      : 0;
+    const avgStockEfficiency = extendedProducts.length > 0 
+      ? extendedProducts.reduce((sum, p) => sum + p.eficienciaEstoque, 0) / extendedProducts.length 
+      : 0;
 
     return {
       totalSKUs: products.length,
       itemsWithZeroStock: products.filter(p => p.Estoque === 0).length,
       totalOpenOrders: products.reduce((sum, p) => sum + p['Pedidos em Aberto'], 0),
       totalStockUnits: products.reduce((sum, p) => sum + p.Estoque, 0),
-      totalSales30d: products.reduce((sum, p) => sum + p['Venda 30d'], 0)
+      totalSales30d: products.reduce((sum, p) => sum + p['Venda 30d'], 0),
+      averageStockDays: avgStockDays,
+      stockTurnover: avgStockTurnover,
+      serviceLevel: products.filter(p => p.Estoque > 0).length / products.length * 100,
+      totalStockValue: totalStockValue,
+      criticalItems: criticalItems,
+      seasonalItems: seasonalItems,
+      profitMargin: avgProfitMargin,
+      stockEfficiency: avgStockEfficiency,
+      demandVariability: 15 + Math.random() * 10, // Simulado: 15-25%
+      forecastAccuracy: 85 + Math.random() * 10 // Simulado: 85-95%
     };
-  }, [products]);
+  }, [products, extendedProducts]);
 
-  // Filtros disponíveis
+  // Filtros disponíveis expandidos
   const filterOptions = useMemo((): FilterOptions => {
-    if (products.length === 0) {
+    if (products.length === 0 || extendedProducts.length === 0) {
       return {
         tiposProduto: [],
         tamanhos: [],
         colecoes: [],
-        linhasComerciais: []
+        linhasComerciais: [],
+        riscos: [],
+        classificacoesABC: [],
+        statusOperacional: []
       };
     }
 
@@ -118,33 +177,56 @@ export const useExcelData = () => {
       tiposProduto: [...new Set(products.map(p => p['Tipo. Produto']).filter(Boolean))],
       tamanhos: [...new Set(products.map(p => p.Tamanho).filter(Boolean))],
       colecoes: [...new Set(products.map(p => p['Coleção Atual']).filter(Boolean))],
-      linhasComerciais: [...new Set(products.map(p => p['Descrição Linha Comercial']).filter(Boolean))]
+      linhasComerciais: [...new Set(products.map(p => p['Descrição Linha Comercial']).filter(Boolean))],
+      riscos: [...new Set(extendedProducts.map(p => p.risco).filter(Boolean))],
+      classificacoesABC: [...new Set(extendedProducts.map(p => p.classificacaoABC).filter(Boolean))],
+      statusOperacional: [...new Set(extendedProducts.map(p => p.statusOperacional).filter(Boolean))]
     };
-  }, [products]);
+  }, [products, extendedProducts]);
 
-  // Produtos filtrados por travesseiros
+  // Produtos filtrados por travesseiros (com métricas avançadas)
   const travesseiroProducts = useMemo(() => {
-    return products.filter(p => 
+    return extendedProducts.filter(p => 
       p['Tipo. Produto'] === 'Travesseiro' || 
       p['Tipo. Produto'] === 'Protetor de Travesseiro'
     );
-  }, [products]);
+  }, [extendedProducts]);
 
-  // Produtos da linha branca
+  // Produtos da linha branca (com métricas avançadas)
   const linhaBrancaProducts = useMemo(() => {
-    return products.filter(p => 
+    return extendedProducts.filter(p => 
       p['Descrição Linha Comercial'] === 'Linha Branca'
     );
-  }, [products]);
+  }, [extendedProducts]);
+
+  // Análises avançadas
+  const advancedAnalytics = useMemo((): AdvancedAnalytics | null => {
+    return analyticsService ? analyticsService.generateCompleteAnalytics() : null;
+  }, [analyticsService]);
+
+  // Alertas de estoque
+  const stockAlerts = useMemo((): StockAlert[] => {
+    return analyticsService ? analyticsService.generateAlerts() : [];
+  }, [analyticsService]);
+
+  // KPIs com metas
+  const kpiTargets = useMemo((): KPITarget[] => {
+    return analyticsService ? analyticsService.generateKPITargets() : [];
+  }, [analyticsService]);
 
   return {
     products,
+    extendedProducts,
     loading,
     error,
     parseExcelFile,
     dashboardMetrics,
     filterOptions,
     travesseiroProducts,
-    linhaBrancaProducts
+    linhaBrancaProducts,
+    advancedAnalytics,
+    stockAlerts,
+    kpiTargets,
+    analyticsService
   };
 };

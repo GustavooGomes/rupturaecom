@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { 
   Package, 
   AlertTriangle, 
-  ShoppingCart, 
   BarChart3, 
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  CheckCircle,
+  Clock,
+  DollarSign
 } from 'lucide-react';
 
 import { useExcelData } from '@/hooks/useExcelData';
@@ -20,18 +22,26 @@ import {
   StockByCollectionChart, 
   RuptureDistributionChart 
 } from '@/components/Charts';
+import { AlertsPanel } from '@/components/AlertsPanel';
+import { ABCAnalysis } from '@/components/ABCAnalysis';
+import { KPIDashboard } from '@/components/KPIDashboard';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'travesseiros' | 'linha-branca'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'travesseiros' | 'linha-branca' | 'analytics' | 'alerts' | 'kpis'>('dashboard');
   
   const {
     products,
+    extendedProducts,
     loading,
     error,
     parseExcelFile,
     dashboardMetrics,
     travesseiroProducts,
-    linhaBrancaProducts
+    linhaBrancaProducts,
+    advancedAnalytics,
+    stockAlerts,
+    kpiTargets,
+    analyticsService
   } = useExcelData();
 
   const hasData = products.length > 0;
@@ -53,20 +63,48 @@ export default function Home() {
           color="red"
         />
         <MetricCard
-          title="Pedidos Abertos"
-          value={dashboardMetrics.totalOpenOrders}
-          icon={ShoppingCart}
-          color="yellow"
+          title="Itens Críticos"
+          value={dashboardMetrics.criticalItems}
+          icon={AlertTriangle}
+          color="red"
         />
         <MetricCard
-          title="Unidades em Estoque"
-          value={dashboardMetrics.totalStockUnits}
+          title="Valor do Estoque"
+          value={`R$ ${(dashboardMetrics.totalStockValue / 1000).toFixed(0)}K`}
           icon={BarChart3}
           color="green"
         />
         <MetricCard
-          title="Vendas 30d"
-          value={dashboardMetrics.totalSales30d}
+          title="Giro Médio"
+          value={`${dashboardMetrics.stockTurnover.toFixed(1)}x`}
+          icon={TrendingUp}
+          color="purple"
+        />
+      </div>
+
+      {/* Métricas Secundárias */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricCard
+          title="Nível de Serviço"
+          value={`${dashboardMetrics.serviceLevel.toFixed(1)}%`}
+          icon={CheckCircle}
+          color="green"
+        />
+        <MetricCard
+          title="Dias Médios Estoque"
+          value={`${dashboardMetrics.averageStockDays.toFixed(0)} dias`}
+          icon={Clock}
+          color="blue"
+        />
+        <MetricCard
+          title="Margem Média"
+          value={`${dashboardMetrics.profitMargin.toFixed(1)}%`}
+          icon={DollarSign}
+          color="green"
+        />
+        <MetricCard
+          title="Eficiência Estoque"
+          value={`${dashboardMetrics.stockEfficiency.toFixed(1)}%`}
           icon={TrendingUp}
           color="purple"
         />
@@ -100,6 +138,31 @@ export default function Home() {
         title="Produtos - Linha Branca"
         isLinhaBranca={true}
       />
+    </div>
+  );
+
+  const renderAnalytics = () => (
+    <div className="space-y-6">
+      {advancedAnalytics && (
+        <ABCAnalysis abcResults={advancedAnalytics.abcAnalysis} />
+      )}
+    </div>
+  );
+
+  const renderAlerts = () => (
+    <div className="space-y-6">
+      <AlertsPanel alerts={stockAlerts} />
+    </div>
+  );
+
+  const renderKPIs = () => (
+    <div className="space-y-6">
+      {analyticsService && (
+        <KPIDashboard 
+          kpiTargets={kpiTargets}
+          performanceMetrics={analyticsService['calculatePerformanceMetrics']()}
+        />
+      )}
     </div>
   );
 
@@ -145,6 +208,7 @@ export default function Home() {
           onTabChange={setActiveTab}
           travesseiroCount={travesseiroProducts.length}
           linhaBrancaCount={linhaBrancaProducts.length}
+          alertsCount={stockAlerts.length}
         />
       )}
 
@@ -169,6 +233,9 @@ export default function Home() {
         ) : (
           <>
             {activeTab === 'dashboard' && renderDashboard()}
+            {activeTab === 'analytics' && renderAnalytics()}
+            {activeTab === 'kpis' && renderKPIs()}
+            {activeTab === 'alerts' && renderAlerts()}
             {activeTab === 'travesseiros' && renderTravesseiros()}
             {activeTab === 'linha-branca' && renderLinhaBranca()}
           </>

@@ -1,19 +1,21 @@
 'use client';
 
-import { BarChart3, Bed, Shirt } from 'lucide-react';
+import { BarChart3, Bed, Shirt, Brain, AlertTriangle, Target } from 'lucide-react';
 
 interface NavigationProps {
-  activeTab: 'dashboard' | 'travesseiros' | 'linha-branca';
-  onTabChange: (tab: 'dashboard' | 'travesseiros' | 'linha-branca') => void;
+  activeTab: 'dashboard' | 'travesseiros' | 'linha-branca' | 'analytics' | 'alerts' | 'kpis';
+  onTabChange: (tab: 'dashboard' | 'travesseiros' | 'linha-branca' | 'analytics' | 'alerts' | 'kpis') => void;
   travesseiroCount: number;
   linhaBrancaCount: number;
+  alertsCount?: number;
 }
 
 export const Navigation = ({ 
   activeTab, 
   onTabChange, 
   travesseiroCount, 
-  linhaBrancaCount 
+  linhaBrancaCount,
+  alertsCount = 0
 }: NavigationProps) => {
   const tabs = [
     {
@@ -21,6 +23,25 @@ export const Navigation = ({
       label: 'Dashboard Geral',
       icon: BarChart3,
       count: null
+    },
+    {
+      id: 'analytics' as const,
+      label: 'Análises Avançadas',
+      icon: Brain,
+      count: null
+    },
+    {
+      id: 'kpis' as const,
+      label: 'KPIs & Performance',
+      icon: Target,
+      count: null
+    },
+    {
+      id: 'alerts' as const,
+      label: 'Alertas',
+      icon: AlertTriangle,
+      count: alertsCount,
+      urgent: alertsCount > 0
     },
     {
       id: 'travesseiros' as const,
@@ -62,6 +83,8 @@ export const Navigation = ({
                       ml-2 py-0.5 px-2 rounded-full text-xs font-medium
                       ${isActive
                         ? 'bg-blue-100 text-blue-800'
+                        : tab.urgent && tab.count > 0
+                        ? 'bg-red-100 text-red-800 animate-pulse'
                         : 'bg-gray-100 text-gray-600'
                       }
                     `}
