@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Package, 
   AlertTriangle, 
@@ -25,9 +25,11 @@ import {
 import { AlertsPanel } from '@/components/AlertsPanel';
 import { ABCAnalysis } from '@/components/ABCAnalysis';
 import { KPIDashboard } from '@/components/KPIDashboard';
+import { AdvancedFilters } from '@/components/AdvancedFilters';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'travesseiros' | 'linha-branca' | 'analytics' | 'alerts' | 'kpis'>('dashboard');
+  const [filteredProducts, setFilteredProducts] = useState(extendedProducts);
   
   const {
     products,
@@ -35,48 +37,64 @@ export default function Home() {
     loading,
     error,
     parseExcelFile,
-    dashboardMetrics,
     travesseiroProducts,
     linhaBrancaProducts,
     advancedAnalytics,
     stockAlerts,
     kpiTargets,
-    analyticsService
+    analyticsService,
+    filterOptions
   } = useExcelData();
+
+  // Sincronizar produtos filtrados com produtos carregados
+  useEffect(() => {
+    setFilteredProducts(extendedProducts);
+  }, [extendedProducts]);
+
+  const handleFilterChange = (filtered: typeof extendedProducts) => {
+    setFilteredProducts(filtered);
+  };
 
   const hasData = products.length > 0;
 
   const renderDashboard = () => (
     <div className="space-y-6">
-      {/* Métricas Principais */}
+      {/* Filtros */}
+      <AdvancedFilters
+        products={extendedProducts}
+        filterOptions={filterOptions}
+        onFilterChange={handleFilterChange}
+      />
+
+      {/* Métricas Principais (baseadas nos produtos filtrados) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <MetricCard
           title="Total de SKUs"
-          value={dashboardMetrics.totalSKUs}
+          value={filteredProducts.length}
           icon={Package}
           color="blue"
         />
         <MetricCard
           title="Itens em Ruptura"
-          value={dashboardMetrics.itemsWithZeroStock}
+          value={filteredProducts.filter(p => p['Estoque Atual'] === 0).length}
           icon={AlertTriangle}
           color="red"
         />
         <MetricCard
           title="Itens Críticos"
-          value={dashboardMetrics.criticalItems}
+          value={filteredProducts.filter(p => p['Estoque Atual'] < 10 && p['Estoque Atual'] > 0).length}
           icon={AlertTriangle}
           color="red"
         />
         <MetricCard
           title="Valor do Estoque"
-          value={`R$ ${(dashboardMetrics.totalStockValue / 1000).toFixed(0)}K`}
+          value={`R$ ${(filteredProducts.reduce((sum, p) => sum + (p['Estoque Atual'] * p['Preço de Venda']), 0) / 1000).toFixed(0)}K`}
           icon={BarChart3}
           color="green"
         />
         <MetricCard
           title="Giro Médio"
-          value={`${dashboardMetrics.stockTurnover.toFixed(1)}x`}
+          value={`${(filteredProducts.reduce((sum, p) => sum + p.giroEstoque, 0) / filteredProducts.length).toFixed(1)}x`}
           icon={TrendingUp}
           color="purple"
         />
@@ -86,65 +104,117 @@ export default function Home() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard
           title="Nível de Serviço"
-          value={`${dashboardMetrics.serviceLevel.toFixed(1)}%`}
+          value={`${((filteredProducts.filter(p => p['Estoque Atual'] > 0).length / filteredProducts.length) * 100).toFixed(1)}%`}
           icon={CheckCircle}
           color="green"
         />
         <MetricCard
           title="Dias Médios Estoque"
-          value={`${dashboardMetrics.averageStockDays.toFixed(0)} dias`}
+          value={`${(filteredProducts.reduce((sum, p) => sum + p.diasCobertura, 0) / filteredProducts.length).toFixed(0)} dias`}
           icon={Clock}
           color="blue"
         />
         <MetricCard
           title="Margem Média"
-          value={`${dashboardMetrics.profitMargin.toFixed(1)}%`}
+          value={`${(filteredProducts.reduce((sum, p) => sum + p.margemLucro, 0) / filteredProducts.length).toFixed(1)}%`}
           icon={DollarSign}
           color="green"
         />
         <MetricCard
           title="Eficiência Estoque"
-          value={`${dashboardMetrics.stockEfficiency.toFixed(1)}%`}
+          value={`${(filteredProducts.reduce((sum, p) => sum + p.eficienciaEstoque, 0) / filteredProducts.length).toFixed(1)}%`}
           icon={TrendingUp}
           color="purple"
         />
       </div>
 
-      {/* Gráficos */}
+      {/* Gráficos (baseados nos produtos filtrados) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <StockByTypeChart products={products} />
-        <RuptureDistributionChart products={products} />
+        <StockByTypeChart products={filteredProducts} />
+        <RuptureDistributionChart products={filteredProducts} />
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        <StockByCollectionChart products={products} />
+        <StockByCollectionChart products={filteredProducts} />
       </div>
     </div>
   );
 
-  const renderTravesseiros = () => (
-    <div className="space-y-6">
-      <ProductTable 
-        products={travesseiroProducts}
-        title="Produtos - Travesseiros"
-      />
-    </div>
-  );
+  const renderTravesseiros = () => {
+    // Filtrar travesseiros com base nos filtros aplicados
+    const filteredTravesseiros = filteredProducts.filter(p => 
+      travesseiroProducts.some(tp => tp['ID VTEX'] === p['ID VTEX'])
+    );
 
-  const renderLinhaBranca = () => (
-    <div className="space-y-6">
-      <ProductTable 
-        products={linhaBrancaProducts}
-        title="Produtos - Linha Branca"
-        isLinhaBranca={true}
-      />
-    </div>
-  );
+    return (
+      <div className="space-y-6">
+        <AdvancedFilters
+          products={travesseiroProducts}
+          filterOptions={filterOptions}
+          onFilterChange={(filtered) => {
+            // Aplicar filtros específicos para travesseiros
+            setFilteredProducts(prev => {
+              const otherProducts = prev.filter(p => 
+                !travesseiroProducts.some(tp => tp['ID VTEX'] === p['ID VTEX'])
+              );
+              return [...otherProducts, ...filtered];
+            });
+          }}
+        />
+        
+        <ProductTable 
+          products={filteredTravesseiros}
+          title={`Produtos - Travesseiros (${filteredTravesseiros.length})`}
+        />
+      </div>
+    );
+  };
+
+  const renderLinhaBranca = () => {
+    // Filtrar linha branca com base nos filtros aplicados
+    const filteredLinhaBranca = filteredProducts.filter(p => 
+      linhaBrancaProducts.some(lb => lb['ID VTEX'] === p['ID VTEX'])
+    );
+
+    return (
+      <div className="space-y-6">
+        <AdvancedFilters
+          products={linhaBrancaProducts}
+          filterOptions={filterOptions}
+          onFilterChange={(filtered) => {
+            // Aplicar filtros específicos para linha branca
+            setFilteredProducts(prev => {
+              const otherProducts = prev.filter(p => 
+                !linhaBrancaProducts.some(lb => lb['ID VTEX'] === p['ID VTEX'])
+              );
+              return [...otherProducts, ...filtered];
+            });
+          }}
+        />
+        
+        <ProductTable 
+          products={filteredLinhaBranca}
+          title={`Produtos - Linha Branca (${filteredLinhaBranca.length})`}
+          isLinhaBranca={true}
+        />
+      </div>
+    );
+  };
 
   const renderAnalytics = () => (
     <div className="space-y-6">
+      <AdvancedFilters
+        products={extendedProducts}
+        filterOptions={filterOptions}
+        onFilterChange={handleFilterChange}
+      />
+      
       {advancedAnalytics && (
-        <ABCAnalysis abcResults={advancedAnalytics.abcAnalysis} />
+        <ABCAnalysis 
+          abcResults={advancedAnalytics.abcAnalysis.filter(abc => 
+            filteredProducts.some(p => p['ID VTEX'] === abc.productId)
+          )} 
+        />
       )}
     </div>
   );

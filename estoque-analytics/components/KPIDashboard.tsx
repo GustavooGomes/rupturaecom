@@ -1,7 +1,7 @@
 'use client';
 
 import { TrendingUp, TrendingDown, Minus, Target, AlertTriangle } from 'lucide-react';
-import { LineChart, Line, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar, Legend } from 'recharts';
+import { Tooltip, ResponsiveContainer, RadialBarChart, RadialBar } from 'recharts';
 import { KPITarget, PerformanceMetrics } from '@/types/product';
 
 interface KPIDashboardProps {
@@ -38,81 +38,49 @@ export const KPIDashboard = ({ kpiTargets, performanceMetrics }: KPIDashboardPro
     fill: getPerformanceColor(kpi.current, kpi.target)
   }));
 
-  // Simulação de dados históricos para tendências
-  const generateTrendData = (current: number) => {
-    const data = [];
-    for (let i = 6; i >= 0; i--) {
-      const variation = (Math.random() - 0.5) * 10;
-      data.push({
-        day: `${i}d`,
-        value: Math.max(0, current + variation - i * 2)
-      });
-    }
-    return data;
-  };
 
-  // Métricas operacionais em cards
+
+  // Métricas operacionais baseadas nos dados reais do Excel
   const operationalMetrics = [
     {
-      title: 'Acurácia de Estoque',
-      value: performanceMetrics.stockAccuracy,
-      unit: '%',
-      target: 98,
-      icon: Target,
-      color: 'blue'
-    },
-    {
-      title: 'Taxa de Atendimento',
+      title: 'Nível de Serviço',
       value: performanceMetrics.fillRate,
       unit: '%',
       target: 95,
-      icon: TrendingUp,
-      color: 'green'
+      icon: Target,
+      color: 'green',
+      explanation: 'Percentual de produtos com estoque disponível (não zerado)'
     },
     {
-      title: 'Giro de Inventário',
+      title: 'Giro Médio de Inventário',
       value: performanceMetrics.inventoryTurnover,
-      unit: 'x',
-      target: 12,
+      unit: 'x/ano',
+      target: 6,
       icon: TrendingUp,
-      color: 'purple'
+      color: 'purple',
+      explanation: 'Quantas vezes o estoque gira por ano baseado nas vendas dos últimos 30 dias'
     },
     {
-      title: 'Dias de Inventário',
+      title: 'Dias Médios de Cobertura',
       value: performanceMetrics.daysOfInventory,
       unit: 'dias',
-      target: 30,
+      target: 45,
       icon: TrendingDown,
-      color: 'orange'
+      color: 'orange',
+      explanation: 'Média de dias que o estoque atual consegue cobrir baseado no ritmo de vendas'
+    },
+    {
+      title: 'Taxa de Ruptura',
+      value: 100 - performanceMetrics.fillRate,
+      unit: '%',
+      target: 5,
+      icon: AlertTriangle,
+      color: 'red',
+      explanation: 'Percentual de produtos em ruptura (estoque zerado)'
     }
   ];
 
-  const advancedMetrics = [
-    {
-      title: 'Capital em Inventário',
-      value: performanceMetrics.cashToInventory * 100,
-      unit: '%',
-      description: 'Percentual do capital investido em estoque'
-    },
-    {
-      title: 'Inventário Obsoleto',
-      value: performanceMetrics.obsoleteInventory * 100,
-      unit: '%',
-      description: 'Produtos com baixo giro ou sem movimento'
-    },
-    {
-      title: 'Shrinkage',
-      value: performanceMetrics.shrinkage * 100,
-      unit: '%',
-      description: 'Perda de inventário (quebra, furto, etc.)'
-    },
-    {
-      title: 'Acurácia de Previsão',
-      value: performanceMetrics.demandForecastAccuracy,
-      unit: '%',
-      description: 'Precisão das previsões de demanda'
-    }
-  ];
+  // Remover métricas que não podemos calcular com os dados do Excel atual
 
   return (
     <div className="space-y-6">
@@ -175,17 +143,45 @@ export const KPIDashboard = ({ kpiTargets, performanceMetrics }: KPIDashboardPro
           {/* Gráfico Radial de Performance */}
           <div>
             <h4 className="text-sm font-medium text-gray-700 mb-3">Performance vs Metas</h4>
-            <ResponsiveContainer width="100%" height={300}>
-              <RadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="90%" data={radialData}>
+            <ResponsiveContainer width="100%" height={250}>
+              <RadialBarChart cx="50%" cy="50%" innerRadius="30%" outerRadius="85%" data={radialData}>
                 <RadialBar
-                  label={{ position: 'insideStart', fill: '#fff' }}
-                  background
                   dataKey="value"
+                  cornerRadius={3}
+                  fill="#8884d8"
                 />
-                <Legend iconSize={10} />
-                <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                <Tooltip 
+                  formatter={(value: number) => [`${value.toFixed(1)}%`, 'Performance']}
+                  labelFormatter={(label: string) => `KPI: ${label}`}
+                />
               </RadialBarChart>
             </ResponsiveContainer>
+            
+            {/* Lista detalhada dos KPIs */}
+            <div className="mt-4 space-y-2">
+              <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Detalhamento de Performance
+              </h5>
+              {radialData.map((item, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                  <div className="flex items-center space-x-2">
+                    <div 
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: item.fill }}
+                    />
+                    <span className="text-xs text-gray-700">{item.name}</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium text-gray-900">
+                      {item.value.toFixed(1)}%
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {item.value >= 95 ? '✓ No alvo' : item.value >= 80 ? '⚠ Atenção' : '✗ Abaixo'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -231,47 +227,18 @@ export const KPIDashboard = ({ kpiTargets, performanceMetrics }: KPIDashboardPro
                     {performance.toFixed(0)}%
                   </span>
                 </div>
+                
+                {/* Explicação da métrica */}
+                <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600">
+                  {metric.explanation}
+                </div>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Métricas Avançadas */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">
-          Métricas Avançadas de Inventário
-        </h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {advancedMetrics.map((metric, index) => (
-            <div key={index} className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-medium text-gray-900">{metric.title}</h4>
-                <span className="text-2xl font-bold text-gray-900">
-                  {metric.value.toFixed(1)}{metric.unit}
-                </span>
-              </div>
-              <p className="text-sm text-gray-600">{metric.description}</p>
-              
-              {/* Gráfico de tendência simples */}
-              <div className="mt-3">
-                <ResponsiveContainer width="100%" height={50}>
-                  <LineChart data={generateTrendData(metric.value)}>
-                    <Line 
-                      type="monotone" 
-                      dataKey="value" 
-                      stroke="#3B82F6" 
-                      strokeWidth={2} 
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+
 
       {/* Resumo de Performance */}
       <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white">
