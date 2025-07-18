@@ -31,6 +31,11 @@ export const AdvancedFilters = ({
 
   // Aplicar filtros sempre que houver mudanças
   useEffect(() => {
+    if (!products || products.length === 0) {
+      onFilterChange([]);
+      return;
+    }
+    
     let filtered = [...products];
 
     // Filtro de busca
@@ -176,42 +181,42 @@ export const AdvancedFilters = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <FilterSection
                 title="Tipo de Produto"
-                options={filterOptions.tiposProduto}
+                options={filterOptions.tiposProduto || []}
                 category="tiposProduto"
                 colorClass="bg-blue-100 text-blue-800"
               />
               
               <FilterSection
                 title="Tamanho"
-                options={filterOptions.tamanhos}
+                options={filterOptions.tamanhos || []}
                 category="tamanhos"
                 colorClass="bg-green-100 text-green-800"
               />
               
               <FilterSection
                 title="Coleção"
-                options={filterOptions.colecoes}
+                options={filterOptions.colecoes || []}
                 category="colecoes"
                 colorClass="bg-purple-100 text-purple-800"
               />
               
               <FilterSection
                 title="Linha Comercial"
-                options={filterOptions.linhasComerciais}
+                options={filterOptions.linhasComerciais || []}
                 category="linhasComerciais"
                 colorClass="bg-orange-100 text-orange-800"
               />
               
               <FilterSection
                 title="Nível de Risco"
-                options={filterOptions.riscos}
+                options={filterOptions.riscos || []}
                 category="riscos"
                 colorClass="bg-red-100 text-red-800"
               />
               
               <FilterSection
                 title="Classificação ABC"
-                options={filterOptions.classificacoesABC}
+                options={filterOptions.classificacoesABC || []}
                 category="classificacoesABC"
                 colorClass="bg-yellow-100 text-yellow-800"
               />
@@ -219,7 +224,7 @@ export const AdvancedFilters = ({
 
             <FilterSection
               title="Status Operacional"
-              options={filterOptions.statusOperacional}
+              options={filterOptions.statusOperacional || []}
               category="statusOperacional"
               colorClass="bg-indigo-100 text-indigo-800"
             />

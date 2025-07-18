@@ -7,7 +7,8 @@ import { ProductTable } from '@/components/ProductTable';
 import { StockByTypeChart, StockByCollectionChart, RuptureDistributionChart } from '@/components/Charts';
 import { AdvancedFilters } from '@/components/AdvancedFilters';
 import { useState, useEffect } from 'react';
-import { ExtendedProduct } from '@/types/product';
+import { ExtendedProduct, Product } from '@/types/product';
+import { Package, DollarSign, AlertTriangle, AlertCircle } from 'lucide-react';
 
 export default function Dashboard() {
   const { 
@@ -19,7 +20,7 @@ export default function Dashboard() {
     filterOptions
   } = useExcelData();
 
-  const [filteredProducts, setFilteredProducts] = useState(extendedProducts);
+  const [filteredProducts, setFilteredProducts] = useState<ExtendedProduct[]>([]);
 
   useEffect(() => {
     setFilteredProducts(extendedProducts);
@@ -77,26 +78,26 @@ export default function Dashboard() {
         <MetricCard
           title="Total de SKUs"
           value={filteredProducts.length.toString()}
-          change={`${extendedProducts.length} total`}
-          icon="📦"
+          icon={Package}
+          color="blue"
         />
         <MetricCard
           title="Valor do Estoque"
-          value={`R$ ${filteredProducts.reduce((sum, p) => sum + (p['Estoque Atual'] * p['Preço de Venda']), 0).toLocaleString('pt-BR')}`}
-          change="Valor total filtrado"
-          icon="💰"
+          value={`R$ ${filteredProducts.length > 0 ? filteredProducts.reduce((sum, p) => sum + ((p as any)['Estoque Atual'] * (p as any)['Preço de Venda']), 0).toLocaleString('pt-BR') : '0'}`}
+          icon={DollarSign}
+          color="green"
         />
         <MetricCard
           title="SKUs em Ruptura"
-          value={filteredProducts.filter(p => p['Estoque Atual'] === 0).length.toString()}
-          change={`${((filteredProducts.filter(p => p['Estoque Atual'] === 0).length / filteredProducts.length) * 100).toFixed(1)}%`}
-          icon="🚨"
+          value={filteredProducts.filter(p => (p as any)['Estoque Atual'] === 0).length.toString()}
+          icon={AlertTriangle}
+          color="red"
         />
         <MetricCard
           title="Produtos Críticos"
-          value={filteredProducts.filter(p => p['Estoque Atual'] < 10 && p['Estoque Atual'] > 0).length.toString()}
-          change="Estoque < 10 unidades"
-          icon="⚠️"
+          value={filteredProducts.filter(p => (p as any)['Estoque Atual'] < 10 && (p as any)['Estoque Atual'] > 0).length.toString()}
+          icon={AlertCircle}
+          color="yellow"
         />
       </div>
 

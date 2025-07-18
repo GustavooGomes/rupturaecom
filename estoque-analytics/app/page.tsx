@@ -26,10 +26,10 @@ import { AlertsPanel } from '@/components/AlertsPanel';
 import { ABCAnalysis } from '@/components/ABCAnalysis';
 import { KPIDashboard } from '@/components/KPIDashboard';
 import { AdvancedFilters } from '@/components/AdvancedFilters';
+import { ExtendedProduct } from '@/types/product';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'travesseiros' | 'linha-branca' | 'analytics' | 'alerts' | 'kpis'>('dashboard');
-  const [filteredProducts, setFilteredProducts] = useState(extendedProducts);
   
   const {
     products,
@@ -46,12 +46,14 @@ export default function Home() {
     filterOptions
   } = useExcelData();
 
+  const [filteredProducts, setFilteredProducts] = useState<ExtendedProduct[]>([]);
+
   // Sincronizar produtos filtrados com produtos carregados
   useEffect(() => {
     setFilteredProducts(extendedProducts);
   }, [extendedProducts]);
 
-  const handleFilterChange = (filtered: typeof extendedProducts) => {
+  const handleFilterChange = (filtered: ExtendedProduct[]) => {
     setFilteredProducts(filtered);
   };
 
@@ -94,7 +96,7 @@ export default function Home() {
         />
         <MetricCard
           title="Giro Médio"
-          value={`${(filteredProducts.reduce((sum, p) => sum + p.giroEstoque, 0) / filteredProducts.length).toFixed(1)}x`}
+          value={`${filteredProducts.length > 0 ? (filteredProducts.reduce((sum, p) => sum + p.giroEstoque, 0) / filteredProducts.length).toFixed(1) : '0.0'}x`}
           icon={TrendingUp}
           color="purple"
         />
@@ -104,25 +106,25 @@ export default function Home() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard
           title="Nível de Serviço"
-          value={`${((filteredProducts.filter(p => p['Estoque Atual'] > 0).length / filteredProducts.length) * 100).toFixed(1)}%`}
+          value={`${filteredProducts.length > 0 ? ((filteredProducts.filter(p => p['Estoque Atual'] > 0).length / filteredProducts.length) * 100).toFixed(1) : '0.0'}%`}
           icon={CheckCircle}
           color="green"
         />
         <MetricCard
           title="Dias Médios Estoque"
-          value={`${(filteredProducts.reduce((sum, p) => sum + p.diasCobertura, 0) / filteredProducts.length).toFixed(0)} dias`}
+          value={`${filteredProducts.length > 0 ? (filteredProducts.reduce((sum, p) => sum + p.diasCobertura, 0) / filteredProducts.length).toFixed(0) : '0'} dias`}
           icon={Clock}
           color="blue"
         />
         <MetricCard
           title="Margem Média"
-          value={`${(filteredProducts.reduce((sum, p) => sum + p.margemLucro, 0) / filteredProducts.length).toFixed(1)}%`}
+          value={`${filteredProducts.length > 0 ? (filteredProducts.reduce((sum, p) => sum + p.margemLucro, 0) / filteredProducts.length).toFixed(1) : '0.0'}%`}
           icon={DollarSign}
           color="green"
         />
         <MetricCard
           title="Eficiência Estoque"
-          value={`${(filteredProducts.reduce((sum, p) => sum + p.eficienciaEstoque, 0) / filteredProducts.length).toFixed(1)}%`}
+          value={`${filteredProducts.length > 0 ? (filteredProducts.reduce((sum, p) => sum + p.eficienciaEstoque, 0) / filteredProducts.length).toFixed(1) : '0.0'}%`}
           icon={TrendingUp}
           color="purple"
         />
